@@ -79,11 +79,17 @@ describe("내부 API 상태·모드와 외부 호출 차단 (PRD AC 11·12·14)"
       const response = await GET(new Request(`http://localhost/api/box-office?date=2026-09-06&type=${type}`));
       expect(response.status).toBe(200);
       expect(response.headers.get("cache-control")).toBe("no-store");
-      expect(await response.json()).toMatchObject({ status: "empty", items: [], mode: "demo" });
+      expect(await response.json()).toMatchObject({
+        data: { status: "empty", items: [] },
+        meta: { source: "fixture", fetchedAt: null, expiresAt: null, cachePersisted: false },
+      });
     }
     const response = await GET(new Request("http://localhost/api/box-office?date=2026-09-13&type=daily"));
     expect(response.status).toBe(200);
-    expect(await response.json()).toMatchObject({ status: "data", mode: "demo" });
+    expect(await response.json()).toMatchObject({
+      data: { status: "data" },
+      meta: { source: "fixture", cachePersisted: false },
+    });
     expect(fetch).not.toHaveBeenCalled();
   });
   it.each(["date=2026-02-30", "date=9999-01-01", "date=2026-09-13&type=invalid", "date=2026-09-13&demoScenario=invalid"])("잘못된 입력 %s를 거절한다", async (params) => {
@@ -94,7 +100,7 @@ describe("내부 API 상태·모드와 외부 호출 차단 (PRD AC 11·12·14)"
   it("에러 시나리오는 빈 결과가 아니라 502를 반환한다", async () => {
     const response = await GET(new Request("http://localhost/api/box-office?date=2026-09-13&demoScenario=error"));
     expect(response.status).toBe(502);
-    expect(await response.json()).toMatchObject({ status: "error", code: "DEMO_ERROR" });
+    expect(await response.json()).toMatchObject({ error: { code: "DEMO_ERROR" } });
     expect(fetch).not.toHaveBeenCalled();
   });
   it("느린 응답은 2.5초 후 성공한다", async () => {

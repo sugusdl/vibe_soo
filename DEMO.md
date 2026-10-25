@@ -22,6 +22,8 @@
 | 로딩 | 2026-09-13 | 일간 | 비움 | 느린 응답 (2.5초) | 로딩 화면 후 성공. 이전 표는 로딩 동안 숨김 |
 | 오류 | 2026-09-13 | 일간 | 비움 | 오류 응답 | 오류 안내와 다시 시도. HTTP 502 |
 
+성공·정상 빈 결과·검색 결과 없음 상태에서는 표 상단의 결과 정보에 원본 조회 건수와 가상 데모 출처를 표시합니다. 데모에는 실제 KOBIS 수집 시각이 없으므로 ‘수집 시각 해당 없음’과 한국 시간 기준 데모 응답 생성 시각을 구분합니다. 2026-09-06의 0편은 정상 처리된 빈 응답이며, 검색어 ‘없는제목’의 0편은 5편의 원본 중 일치하는 영화가 없는 상태입니다.
+
 오류 응답을 선택한 동안 재시도도 오류를 반환합니다. 정상 응답으로 바꾸면 복구됩니다. 정상 응답도 350ms 지연을 두어 조건 변경 시 로딩을 표시합니다.
 
 ## 가상 데이터 범위
@@ -35,7 +37,7 @@
 
 ## 구조와 검증
 
-브라우저 → `/api/box-office?date=YYYY-MM-DD&type=daily|weekly|weekend&demoScenario=normal|slow|error` → 서버 fixture → 정규화 → JSON 응답 순서입니다. DB 캐시와 외부 API는 연결하지 않았습니다. `demoScenario`는 demo에서만 사용하는 상태 재현 입력입니다.
+브라우저 → `/api/box-office?date=YYYY-MM-DD&type=daily|weekly|weekend&demoScenario=normal|slow|error` → 서버 fixture → 정규화 → JSON 응답 순서입니다. 응답은 `{ data: { status, items }, meta: { date, type, rangeStart, rangeEnd, source, fetchedAt, expiresAt, cachePersisted, generatedAt } }` 형태이며 데모의 `source`는 `fixture`, 실제 수집 시각인 `fetchedAt`은 `null`입니다. DB 캐시와 외부 API는 연결하지 않았습니다. `demoScenario`는 demo에서만 사용하는 상태 재현 입력입니다.
 
 원본 fixture의 숫자 문자열을 서버에서 검증하고 정수 연산합니다. JSON에서는 정밀도 보존을 위해 십진 문자열로 전달하고 화면에서 천 단위 구분기호를 적용합니다. 결과 API는 `no-store`로 응답합니다.
 

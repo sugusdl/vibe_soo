@@ -15,13 +15,21 @@ export interface BoxOfficeItem {
 }
 
 export interface BoxOfficeResult {
-  status: "data" | "empty";
-  mode: "demo";
-  date: string;
-  type: PeriodType;
-  rangeStart: string;
-  rangeEnd: string;
-  items: BoxOfficeItem[];
+  data: {
+    status: "data" | "empty";
+    items: BoxOfficeItem[];
+  };
+  meta: {
+    date: string;
+    type: PeriodType;
+    rangeStart: string;
+    rangeEnd: string;
+    source: "fixture";
+    fetchedAt: null;
+    expiresAt: null;
+    cachePersisted: false;
+    generatedAt: string;
+  };
 }
 
 export function resolveDataMode(value: string | undefined): DataMode {

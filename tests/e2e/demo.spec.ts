@@ -12,12 +12,18 @@ test("데모 목록: 날짜·기간·검색과 원래 순위를 유지한다", a
   });
   await page.goto("/");
   await expect(page.getByTestId("list-state")).toHaveAttribute("data-state", "success");
+  await expect(page.getByLabel("조회 결과 정보")).toContainText("조회 건수 5편");
+  await expect(page.getByLabel("조회 결과 정보")).toContainText("출처 가상 데모 데이터");
+  await expect(page.getByLabel("조회 결과 정보")).toContainText("수집 시각 해당 없음");
   await expect(page.getByRole("row", { name: /바다의 편지/ })).toContainText("250,000,000");
   await page.getByRole("searchbox").fill(" 바다 ");
   await expect(page.getByRole("rowgroup").last().getByRole("row")).toHaveCount(1);
+  await expect(page.getByLabel("조회 결과 정보")).toContainText("검색 결과 1편");
   await expect(page.getByRole("row", { name: /바다의 편지/ }).getByRole("cell").first()).toHaveText("2");
   await page.getByRole("searchbox").fill("없는제목");
   await expect(page.getByTestId("list-state")).toHaveAttribute("data-state", "search-empty");
+  await expect(page.getByLabel("조회 결과 정보")).toContainText("검색 결과 0편");
+  await expect(page.getByTestId("list-state")).toContainText("조회 목록 5편 중 검색어와 일치하는 영화가 없습니다.");
   await expect(page.getByRole("table")).toHaveCount(0);
   await page.getByRole("button", { name: "검색 초기화" }).click();
   await expect(page.getByRole("rowgroup").last().getByRole("row")).toHaveCount(5);
@@ -33,6 +39,8 @@ test("데모 목록: 날짜·기간·검색과 원래 순위를 유지한다", a
   await page.getByRole("searchbox").fill("없는제목");
   await page.getByLabel("조회 날짜").fill("2026-09-06");
   await expect(page.getByTestId("list-state")).toHaveAttribute("data-state", "empty");
+  await expect(page.getByLabel("조회 결과 정보")).toContainText("조회 건수 0편");
+  await expect(page.getByTestId("list-state")).toContainText("오류가 아닙니다.");
   await expect(page.getByRole("heading", { name: "선택한 기간의 박스오피스 데이터가 없습니다." })).toBeVisible();
   expect(externalRequests).toEqual([]);
 });

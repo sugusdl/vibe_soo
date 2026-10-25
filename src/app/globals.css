@@ -59,6 +59,9 @@ button[aria-pressed="true"] { background: var(--accent); border-color: var(--acc
 .result-heading h2 { margin: 0; }
 .result-heading p, .result-heading span { color: var(--muted); font-size: 13px; }
 .result-heading span { margin-left: auto; }
+.result-meta { display: flex; flex-wrap: wrap; gap: 8px 22px; padding: 12px 16px; margin-bottom: 14px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--muted); font-size: 13px; }
+.result-meta strong { color: var(--text); }
+.result-meta span { color: var(--muted); }
 .table-scroll { overflow-x: auto; max-width: 100%; border: 1px solid var(--border); border-radius: 10px; background: white; }
 table { width: 100%; border-collapse: collapse; font-size: 14px; white-space: nowrap; }
 thead { background: #edf1f7; }
@@ -73,6 +76,8 @@ thead th { font-size: 12px; color: var(--muted); }
 .state-panel button { margin-top: 6px; }
 .error-panel { border-color: #eabbb5; background: #fff8f7; }
 .error-panel h2 { color: #9f3024; }
+.empty-panel { border-color: #bed0fa; background: #f8fbff; }
+.search-empty-panel { border-color: #d9d5ea; background: #fbfaff; }
 .state-panel .hint { font-size: 12px; }
 .spinner { height: 26px; width: 26px; border: 3px solid #dce5f8; border-top-color: var(--accent); border-radius: 50%; animation: spin 1s linear infinite; }
 .data-note { font-size: 12px; color: var(--muted); margin: 18px 0 36px; }

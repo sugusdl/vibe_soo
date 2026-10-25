@@ -6,7 +6,7 @@ export const runtime = "nodejs";
 
 const headers = { "Cache-Control": "no-store" };
 function error(code: string, message: string, status: number) {
-  return Response.json({ status: "error", code, message }, { status, headers });
+  return Response.json({ error: { code, message } }, { status, headers });
 }
 
 export async function GET(request: Request) {
@@ -35,8 +35,13 @@ export async function GET(request: Request) {
     const fixture = getRawDemoFixture(date, type as PeriodType);
     const items = normalizeMovies(fixture.items);
     const result: BoxOfficeResult = {
-      status: items.length ? "data" : "empty", mode: "demo", date, type: type as PeriodType,
-      rangeStart: fixture.rangeStart, rangeEnd: fixture.rangeEnd, items,
+      data: { status: items.length ? "data" : "empty", items },
+      meta: {
+        date, type: type as PeriodType,
+        rangeStart: fixture.rangeStart, rangeEnd: fixture.rangeEnd,
+        source: "fixture", fetchedAt: null, expiresAt: null,
+        cachePersisted: false, generatedAt: new Date().toISOString(),
+      },
     };
     return Response.json(result, { headers });
   } catch {

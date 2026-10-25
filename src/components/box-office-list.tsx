@@ -23,7 +23,11 @@ export function BoxOfficeList({ mode, today }: { mode: DataMode | "invalid"; tod
     fetch(`/api/box-office?${params}`, { signal: controller.signal, cache: "no-store" })
       .then(async (response) => {
         if (!response.ok) throw new Error("LOAD_FAILED");
-        return await response.json() as BoxOfficeResult;
+        const payload = await response.json() as BoxOfficeResult;
+        if (!payload?.data || !Array.isArray(payload.data.items) || !payload.meta?.generatedAt) {
+          throw new Error("INVALID_RESPONSE");
+        }
+        return payload;
       })
       .then((result) => { if (!controller.signal.aborted) setLoaded({ key, result }); })
       .catch(() => {
@@ -34,9 +38,12 @@ export function BoxOfficeList({ mode, today }: { mode: DataMode | "invalid"; tod
 
   const current = loaded?.key === key ? loaded : null;
   const result = current && "result" in current ? current.result : null;
-  const items = result ? filterMovies(result.items, keyword) : [];
+  const items = result ? filterMovies(result.data.items, keyword) : [];
   const state = !validDate ? "invalid" : !current ? "loading" : "error" in current ? "error" :
-    result?.status === "empty" ? "empty" : items.length === 0 ? "search-empty" : "success";
+    result?.data.status === "empty" ? "empty" : items.length === 0 ? "search-empty" : "success";
+  const generatedAt = result ? new Intl.DateTimeFormat("ko-KR", {
+    timeZone: "Asia/Seoul", dateStyle: "medium", timeStyle: "medium",
+  }).format(new Date(result.meta.generatedAt)) : "";
 
   return (
     <>
@@ -80,11 +87,15 @@ export function BoxOfficeList({ mode, today }: { mode: DataMode | "invalid"; tod
             <>
               <div className="result-heading">
                 <h2>{periodLabels[type]} 박스오피스</h2>
-                <p>조회 기간: <strong>{result?.rangeStart} ~ {result?.rangeEnd}</strong></p>
-                {state === "success" && <span>{items.length}편{keyword.trim() ? ` / 전체 ${result?.items.length}편` : ""}</span>}
+                <p>조회 기간: <strong>{result?.meta.rangeStart} ~ {result?.meta.rangeEnd}</strong></p>
               </div>
-              {state === "empty" ? <div className="state-panel" role="status"><h2>선택한 기간의 박스오피스 데이터가 없습니다.</h2><p>다른 날짜나 기간을 선택해 주세요. 데모 데이터는 2026-09-07 ~ 2026-09-13에 제공됩니다.</p></div> :
-                state === "search-empty" ? <div className="state-panel" role="status"><h2>현재 조회 목록에 일치하는 영화가 없습니다.</h2><p>검색어를 바꾸거나 초기화해 주세요.</p><button type="button" onClick={() => setKeyword("")}>검색 초기화</button></div> : (
+              <div className="result-meta" aria-label="조회 결과 정보">
+                <p>조회 건수 <strong>{result?.data.items.length ?? 0}편</strong>{keyword.trim() && result?.data.status === "data" ? ` · 검색 결과 ${items.length}편` : ""}</p>
+                <p>출처 <strong>가상 데모 데이터</strong></p>
+                <p>수집 시각 <strong>해당 없음</strong><span> · 데모 생성 시각 {generatedAt} (한국 시간)</span></p>
+              </div>
+              {state === "empty" ? <div className="state-panel empty-panel" role="status"><h2>선택한 기간의 박스오피스 데이터가 없습니다.</h2><p>요청은 정상 처리됐으며, 이 기간에 제공되는 데모 데이터가 없습니다. 오류가 아닙니다.</p><p>다른 날짜나 기간을 선택해 주세요. 데모 데이터는 2026-09-07 ~ 2026-09-13에 제공됩니다.</p></div> :
+                state === "search-empty" ? <div className="state-panel search-empty-panel" role="status"><h2>현재 조회 목록에 일치하는 영화가 없습니다.</h2><p>조회 목록 {result?.data.items.length}편 중 검색어와 일치하는 영화가 없습니다. 검색어를 바꾸거나 초기화해 주세요.</p><button type="button" onClick={() => setKeyword("")}>검색 초기화</button></div> : (
                   <div className="table-scroll" role="region" aria-label="박스오피스 결과 표" tabIndex={0}>
                     <table>
                       <caption className="sr-only">{date} 기준 {periodLabels[type]} 박스오피스 가상 데이터</caption>

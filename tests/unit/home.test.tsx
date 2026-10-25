@@ -8,9 +8,15 @@ import type { BoxOfficeResult } from "@/lib/box-office";
 afterEach(() => { vi.unstubAllGlobals(); vi.unstubAllEnvs(); });
 
 const response: BoxOfficeResult = {
-  status: "data", mode: "demo", date: "2026-09-13", type: "daily",
-  rangeStart: "2026-09-13", rangeEnd: "2026-09-13",
-  items: [{ movieCd: "A", movieNm: "바다의 편지", rank: 2, openDt: "2026-09-02", salesAmt: "9007199254740993", audiCnt: "25000", salesAcc: "9007199254740993", audiAcc: "171000" }],
+  data: {
+    status: "data",
+    items: [{ movieCd: "A", movieNm: "바다의 편지", rank: 2, openDt: "2026-09-02", salesAmt: "9007199254740993", audiCnt: "25000", salesAcc: "9007199254740993", audiAcc: "171000" }],
+  },
+  meta: {
+    date: "2026-09-13", type: "daily", rangeStart: "2026-09-13", rangeEnd: "2026-09-13",
+    source: "fixture", fetchedAt: null, expiresAt: null, cachePersisted: false,
+    generatedAt: "2026-10-24T00:00:00.000Z",
+  },
 };
 
 describe("F1 데모 화면", () => {
@@ -40,6 +46,8 @@ describe("F1 데모 화면", () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, json: async () => response }));
     render(<BoxOfficeList mode="demo" today="2026-10-24" />);
     expect(await screen.findByText("9,007,199,254,740,993")).toBeVisible();
+    expect(screen.getByText("가상 데모 데이터")).toBeVisible();
+    expect(screen.getByText("해당 없음")).toBeVisible();
     fireEvent.change(screen.getByRole("searchbox"), { target: { value: " 바다 " } });
     expect(screen.getByRole("row", { name: /바다의 편지/ })).toHaveTextContent("2");
     fireEvent.change(screen.getByRole("searchbox"), { target: { value: "없는제목" } });
@@ -52,7 +60,7 @@ describe("F1 데모 화면", () => {
     let resolveFirst!: (value: unknown) => void;
     const fetchMock = vi.fn()
       .mockImplementationOnce(() => new Promise((resolve) => { resolveFirst = resolve; }))
-      .mockResolvedValueOnce({ ok: true, json: async () => ({ ...response, status: "empty", date: "2026-09-06", items: [] }) });
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ ...response, data: { status: "empty", items: [] }, meta: { ...response.meta, date: "2026-09-06" } }) });
     vi.stubGlobal("fetch", fetchMock);
     render(<BoxOfficeList mode="demo" today="2026-10-24" />);
     fireEvent.change(screen.getByLabelText("조회 날짜"), { target: { value: "2026-09-06" } });
