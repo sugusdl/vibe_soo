@@ -2,7 +2,7 @@
 
 KOBIS 일간·주간·주말 박스오피스 목록(`/`)과 일간 Top 10 관측 데이터 기반 7/14/30일 인사이트(`/insights`)를 보여주는 Next.js App Router 프로젝트입니다. `demo`는 고정 가상 데이터만 사용합니다. `live`는 서버가 Supabase 저장본을 읽고 필요할 때 KOBIS를 호출합니다.
 
-**배포 상태:** 공개 배포 전 검토가 남았습니다. [인수 기준 점검](docs/ACCEPTANCE.md)의 AC 7·9·17이 미충족이며, 특히 [KOBIS 이용약관](https://www.kobis.or.kr/kobisopenapi/homepg/board/findProvisionInfo.do)의 결과 저장 제한과 현재 Supabase 캐시가 충돌합니다. 배포 준비와 확인 절차는 [배포 가이드](docs/DEPLOYMENT.md)에 있습니다.
+**배포 상태:** AC 7·9의 화면 기능은 구현·검증했습니다. 사용자는 KOBIS의 DB 저장·집계 공개에 대한 별도 서면 허가와 개인·비상업적 운영 목적을 확인했습니다. 허가서 원문·유효기간·호출 한도와 실제 배포 환경은 아직 별도로 검증되지 않았습니다. [인수 기준 점검](docs/ACCEPTANCE.md)과 [배포 가이드](docs/DEPLOYMENT.md)를 확인한 뒤 배포합니다.
 
 ## 필요한 환경
 
@@ -41,7 +41,7 @@ npm run dev
 
 `.env.example`에는 demo 모드 예시와 비밀키의 빈 자리만 있습니다. 로컬 비밀값은 Git에서 제외되는 `.env.local`에만 보관합니다. 값을 README, 소스, Git, 브라우저 코드, 로그, 이슈에 적지 마세요. `NEXT_PUBLIC_` 접두사를 비밀값에 붙이지 마세요. Vercel에서는 로컬 파일을 올리지 않고 프로젝트의 **Secret 환경변수**에 직접 등록합니다. Supabase secret key는 서버 전용이라는 [공식 안내](https://supabase.com/docs/guides/getting-started/api-keys)를 따릅니다.
 
-live는 현재 배포 보류 대상입니다. 이용 조건을 해결한 뒤 Supabase에 [마이그레이션](supabase/migrations/20261025_box_office_cache.sql)을 적용하고 [API 가이드](docs/API_GUIDE.md)에 따라 설정하세요. 기존 프로젝트에 SQL을 무작정 재실행하지 말고 적용 상태를 먼저 확인하세요.
+live 배포 전에는 사용자에게 별도 허가의 유효기간·호출 한도와 운영 목적을 확인하고 Supabase에 [마이그레이션](supabase/migrations/20261025_box_office_cache.sql)이 적용됐는지 점검하세요. [API 가이드](docs/API_GUIDE.md)에 따라 설정하되 기존 프로젝트에 SQL을 무작정 재실행하지 마세요.
 
 ## 설치 후 검사·실행 명령
 

@@ -60,3 +60,9 @@ export function formatRevenuePerPerson(sales: bigint | null, audience: bigint | 
   if (sales === null || audience === null || audience <= 0n) return "—";
   return `${((sales + audience / 2n) / audience).toLocaleString("ko-KR")}원`;
 }
+
+export function formatLeaderSalesShare(leaderSales: bigint | null, totalSales: bigint | null): string {
+  if (leaderSales === null || totalSales === null || totalSales <= 0n) return "—";
+  const tenths = (leaderSales * 1000n + totalSales / 2n) / totalSales;
+  return `${tenths / 10n}.${tenths % 10n}%`;
+}

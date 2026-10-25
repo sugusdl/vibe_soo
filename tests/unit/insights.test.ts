@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { aggregateInsights, datesEndingAt, formatRevenuePerPerson, formatScaled, type InsightDay } from "@/lib/insights";
+import { aggregateInsights, datesEndingAt, formatLeaderSalesShare, formatRevenuePerPerson, formatScaled, type InsightDay } from "@/lib/insights";
 import type { BoxOfficeResult } from "@/lib/box-office";
 
 function day(date: string, values: Array<[string, string, string, string]>): InsightDay {
@@ -57,5 +57,12 @@ describe("인사이트 집계", () => {
     expect(result.totalSales).toBeNull();
     expect(result.totalAudience).toBeNull();
     expect(result.top).toEqual([]);
+  });
+
+  it("1위 점유율을 마지막에 한 자리로 반올림하고 분모 0은 —로 표시한다", () => {
+    // 7일 demo 독립 손계산: 바다 121,000명, 전체 374,200명, 1인당 10,000원.
+    expect(formatLeaderSalesShare(1210000000n, 3742000000n)).toBe("32.3%");
+    expect(formatLeaderSalesShare(0n, 0n)).toBe("—");
+    expect(formatLeaderSalesShare(null, 3742000000n)).toBe("—");
   });
 });
