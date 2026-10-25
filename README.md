@@ -1,66 +1,74 @@
-# 박스오피스 인사이트 개발 시작
+# 영화 박스오피스 인사이트 대시보드
 
-Next.js App Router + TypeScript 박스오피스 대시보드입니다. 목록(`/`)은 `DATA_MODE=demo`에서 가상 데이터, `DATA_MODE=live`에서 Supabase 저장본을 먼저 읽고 필요할 때 KOBIS 일간·주간·주말 데이터를 조회합니다. DB SQL과 연동 코드는 준비됐으며 실제 Supabase 프로젝트 설정·통합 검증은 남았습니다. 인사이트(`/insights`)는 준비 화면입니다.
+KOBIS 일간·주간·주말 박스오피스 목록(`/`)과 일간 Top 10 관측 데이터 기반 7/14/30일 인사이트(`/insights`)를 보여주는 Next.js App Router 프로젝트입니다. `demo`는 고정 가상 데이터만 사용합니다. `live`는 서버가 Supabase 저장본을 읽고 필요할 때 KOBIS를 호출합니다.
 
-## 실행 환경과 로컬 실행
+**배포 상태:** 공개 배포 전 검토가 남았습니다. [인수 기준 점검](docs/ACCEPTANCE.md)의 AC 7·9·17이 미충족이며, 특히 [KOBIS 이용약관](https://www.kobis.or.kr/kobisopenapi/homepg/board/findProvisionInfo.do)의 결과 저장 제한과 현재 Supabase 캐시가 충돌합니다. 배포 준비와 확인 절차는 [배포 가이드](docs/DEPLOYMENT.md)에 있습니다.
 
-- Node.js 22.x (`.node-version`: 22.23.4)
-- npm 10 이상
+## 필요한 환경
 
-Node 버전 관리 도구로 `.node-version`에 맞춘 뒤 실행합니다. 이 파일 자체는 시스템 Node를 자동으로 전환하지 않습니다.
+| 항목 | 버전·용도 |
+| --- | --- |
+| Node.js | **22.x**. 로컬 기준 `.node-version`은 22.23.4 |
+| npm | **10 이상**. `package.json`은 npm 10.9.9 기준 |
+| Git | 저장소 복제 |
+| 브라우저 | 로컬 화면 확인. 자동 화면 테스트는 Playwright Chromium 사용 |
+
+`.node-version` 파일만으로 Node가 자동 전환되지는 않습니다. 버전 관리 도구 또는 설치한 Node 22로 `node --version`을 확인하세요.
+
+## 키 없이 먼저 실행하기
+
+새 복제본에서 `.env.local`을 만들지 않으면 기본값이 `demo`입니다. 외부 KOBIS·Supabase 요청은 발생하지 않습니다.
 
 ```powershell
+git clone https://github.com/sugusdl/vibe_soo.git
+cd vibe_soo
 node --version
+npm --version
 npm ci
 npm run dev
 ```
 
-브라우저에서 http://localhost:3000 으로 접속합니다. 포트가 사용 중이면 개발 서버 로그에 표시된 주소를 사용합니다. 종료는 `Ctrl+C`입니다.
+브라우저에서 `http://localhost:3000`으로 접속합니다. `/insights`도 확인할 수 있습니다. demo 샘플 날짜는 **2026-09-07~13**이고 2026-09-06은 정상 빈 결과입니다. F2 종료일을 2026-09-13으로 두고 14일/30일을 선택하면 각각 빈 날짜 7일/23일을 확인할 수 있습니다. 기존 PC의 `.env.local`에 `DATA_MODE=live`가 있으면 그 설정이 적용되므로 demo 확인 전 모드를 바꾸고 서버를 다시 시작하세요.
 
-## 환경변수
+## 환경변수 이름과 보관 위치
 
-데모와 모의 자동 테스트는 실제 키 없이 실행됩니다. live에서는 `.env.example`의 변수 이름을 참고해 `.env.local`에만 실제 값을 설정하고 [API 가이드](docs/API_GUIDE.md)의 순서대로 SQL을 적용합니다.
+| 이름 | 용도 | demo 필수 | live 필수 |
+| --- | --- | --- | --- |
+| `DATA_MODE` | `demo` 또는 `live`. 생략하면 demo | 아니요 | 예 |
+| `KOBIS_API_KEY` | 서버의 KOBIS 인증 | 아니요 | 예 |
+| `SUPABASE_URL` | 서버의 Supabase 프로젝트 주소 | 아니요 | 예 |
+| `SUPABASE_SECRET_KEY` | 서버 전용 DB 접근 | 아니요 | 예 |
 
-- `KOBIS_API_KEY`
-- `SUPABASE_URL`
-- `SUPABASE_SECRET_KEY`
+`.env.example`에는 demo 모드 예시와 비밀키의 빈 자리만 있습니다. 로컬 비밀값은 Git에서 제외되는 `.env.local`에만 보관합니다. 값을 README, 소스, Git, 브라우저 코드, 로그, 이슈에 적지 마세요. `NEXT_PUBLIC_` 접두사를 비밀값에 붙이지 마세요. Vercel에서는 로컬 파일을 올리지 않고 프로젝트의 **Secret 환경변수**에 직접 등록합니다. Supabase secret key는 서버 전용이라는 [공식 안내](https://supabase.com/docs/guides/getting-started/api-keys)를 따릅니다.
 
-실제 값을 소스·Git·브라우저·로그에 포함하지 않습니다. `.env.local`은 Git에서 제외하며 `.env.example`은 빈 값만 포함합니다. KOBIS 호출은 서버에서만 수행합니다. 요청·응답·검증 계약은 [API 가이드](docs/API_GUIDE.md), 데모 확인 입력은 [DEMO.md](DEMO.md)를 참고하세요.
+live는 현재 배포 보류 대상입니다. 이용 조건을 해결한 뒤 Supabase에 [마이그레이션](supabase/migrations/20261025_box_office_cache.sql)을 적용하고 [API 가이드](docs/API_GUIDE.md)에 따라 설정하세요. 기존 프로젝트에 SQL을 무작정 재실행하지 말고 적용 상태를 먼저 확인하세요.
 
-## 검증 명령
+## 설치 후 검사·실행 명령
 
-| 명령 | 용도 |
+아래 명령은 모두 현재 `package.json`에 실제로 정의되어 있습니다.
+
+| 명령 | 내용 |
 | --- | --- |
-| `npm run lint` | ESLint 검사, 경고도 실패 처리 |
-| `npm run typecheck` | Next 라우트 타입 생성 후 TypeScript 검사 |
-| `npm run test` | Vitest 단위 테스트 1회 실행 |
-| `npm run test:watch` | Vitest 변경 감시 |
+| `npm run dev` | 개발 서버 시작 |
 | `npm run build` | 프로덕션 빌드 |
 | `npm run start` | 빌드된 앱 실행 |
-| `npm run test:e2e` | Playwright 데스크톱·모바일 Chromium 테스트 |
-| `npm run test:e2e:ui` | Playwright 테스트 UI |
+| `npm run lint` | ESLint, 경고도 실패 처리 |
+| `npm run typecheck` | Next 라우트 타입 생성 후 TypeScript 검사 |
+| `npm run test` | Vitest 단위 검사 |
+| `npm run test:e2e` | Playwright 데스크톱·모바일 화면 검사. 내부적으로 demo 빌드·테스트 서버 실행 |
+| `npm run verify:data -- --date=YYYY-MM-DD --period=daily` | 저장본·로컬 원본·새 KOBIS 응답 대조. live 설정과 이용 조건 확인 후 실행 |
 
-화면 테스트 최초 실행 전 브라우저를 설치합니다.
+첫 Playwright 실행 전 필요한 브라우저를 설치합니다.
 
 ```powershell
 npx playwright install chromium
 npm run test:e2e
 ```
 
-Playwright는 프로덕션 빌드 후 전용 포트 3100에서 테스트 서버를 자동 시작·종료합니다. 기존 개발 서버와 같은 빌드 출력 폴더를 쓰므로 개발 서버를 종료한 뒤 화면 테스트를 실행합니다. 보고서는 `playwright-report/`, 실패 자료는 `test-results/`에 생성되며 Git에서 제외됩니다.
+Playwright는 포트 3100의 별도 서버를 사용합니다. 같은 폴더에서 `npm run dev`가 실행 중이면 빌드 출력 충돌을 피하기 위해 종료한 뒤 화면 검사를 실행하세요. AC 7·9 재현 테스트는 `fixme`로 남아 있어 화면 검사에서 건너뜁니다. 건너뜀은 통과가 아닙니다.
 
-Vitest는 동기 화면 컴포넌트 테스트를 담당합니다. 향후 비동기 서버 컴포넌트와 실제 라우팅은 Playwright에서 검증합니다.
+## 문서와 폴더
 
-## 구조와 설계 문서
-
-```text
-src/app/               App Router 페이지와 내부 API
-src/components/        공통 화면 컴포넌트
-src/lib/server/        server-only 서버 모듈
-tests/unit/            Vitest 테스트
-tests/e2e/             Playwright 테스트
-```
-
-기존 설계 문서는 수정하지 않았습니다. AGENTS.md의 명령어 표는 작성 당시 ‘미정’ 상태의 기록이며 현재 실행 가능한 명령은 이 문서와 package.json을 기준으로 확인합니다. 저장 모델은 후속 ERD.md의 세 테이블을 적용할 예정입니다.
-
-설정 근거: [Next.js 설치](https://nextjs.org/docs/app/getting-started/installation), [Vitest 가이드](https://nextjs.org/docs/app/guides/testing/vitest), [Playwright 가이드](https://nextjs.org/docs/app/guides/testing/playwright).
+- [PRD와 AC](PRD.md), [구현 계획](docs/IMPLEMENTATION.md), [인수 기준 결과](docs/ACCEPTANCE.md), [배포 절차](docs/DEPLOYMENT.md)
+- [아키텍처](ARCHITECTURE.md), [ERD](ERD.md), [API 가이드](docs/API_GUIDE.md), [demo 입력](DEMO.md)
+- `src/app/`: 페이지·내부 API, `src/lib/server/`: 서버 전용 KOBIS/DB, `tests/unit/`·`tests/e2e/`: 자동 검사
