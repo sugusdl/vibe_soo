@@ -2,8 +2,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("server-only", () => ({}));
 
-import { filterMovies, formatInteger, getKoreaToday, isCalendarDate, resolveDataMode } from "@/lib/box-office";
+import { filterMovies, formatInteger, getKoreaToday, getPreviousDate, isCalendarDate, resolveDataMode } from "@/lib/box-office";
 import { getRawDemoFixture } from "@/lib/server/demo-fixtures";
+import { buildKobisUrl, KobisError, parseKobisResponse } from "@/lib/server/kobis";
 import { normalizeMovies, parseInteger } from "@/lib/server/normalize";
 import { GET } from "@/app/api/box-office/route";
 
@@ -38,6 +39,7 @@ describe("검증과 숫자 정밀도 (PRD AC 3·4·14)", () => {
     expect(isCalendarDate("2026-02-29")).toBe(false);
     expect(isCalendarDate("2028-02-29")).toBe(true);
     expect(getKoreaToday(new Date("2026-09-12T15:00:00Z"))).toBe("2026-09-13");
+    expect(getPreviousDate("2026-10-01")).toBe("2026-09-30");
   });
 });
 
@@ -110,10 +112,78 @@ describe("내부 API 상태·모드와 외부 호출 차단 (PRD AC 11·12·14)"
     expect((await pending).status).toBe(200);
     expect(fetch).not.toHaveBeenCalled();
   });
-  it.each(["live", "typo"])("DATA_MODE=%s에서는 외부 호출 없이 503을 반환한다", async (mode) => {
+  it.each(["live", "typo"])("키가 없는 live 또는 잘못된 DATA_MODE=%s는 외부 호출 없이 503을 반환한다", async (mode) => {
     vi.stubEnv("DATA_MODE", mode);
+    vi.stubEnv("KOBIS_API_KEY", "");
     const response = await GET(new Request("http://localhost/api/box-office?date=2026-09-13"));
     expect(response.status).toBe(503);
     expect(fetch).not.toHaveBeenCalled();
+  });
+});
+
+const kobisMovie = {
+  movieCd: "20260001", movieNm: "검증용 영화", rank: "1", openDt: "2026-09-01",
+  salesAmt: "9007199254740993", audiCnt: "1000", salesAcc: "9007199254740993", audiAcc: "1000",
+};
+function upstream(type: "daily" | "weekly" | "weekend", items: unknown = [kobisMovie]) {
+  return { boxOfficeResult: {
+    boxofficeType: type === "daily" ? "일별 박스오피스" : "주말 박스오피스",
+    showRange: type === "daily" ? "20260906~20260906" : type === "weekly" ? "20260831~20260906" : "20260904~20260906",
+    [type === "daily" ? "dailyBoxOfficeList" : "weeklyBoxOfficeList"]: items,
+  } };
+}
+
+describe("KOBIS live 어댑터 (PRD AC 2·3·4·11·12)", () => {
+  it("세 유형의 경로·필수 파라미터를 서버에서 조립한다", () => {
+    for (const [type, expectedWeek] of [["daily", null], ["weekly", "0"], ["weekend", "1"]] as const) {
+      const url = buildKobisUrl(type, "2026-09-06", "unit-test-placeholder");
+      expect(url.protocol).toBe("https:");
+      expect(url.pathname).toContain(type === "daily" ? "searchDailyBoxOfficeList.json" : "searchWeeklyBoxOfficeList.json");
+      expect(url.searchParams.get("targetDt")).toBe("20260906");
+      expect(url.searchParams.get("itemPerPage")).toBe("10");
+      expect(url.searchParams.get("weekGb")).toBe(expectedWeek);
+      expect(url.searchParams.has("key")).toBe(true);
+    }
+  });
+  it.each(["daily", "weekly", "weekend"] as const)("%s 응답의 실제 기간과 큰 정수를 정규화한다", (type) => {
+    const parsed = parseKobisResponse(upstream(type), type, "2026-09-06");
+    expect(parsed.items[0].salesAmt).toBe("9007199254740993");
+    expect(parsed.rangeStart).toBe(type === "daily" ? "2026-09-06" : type === "weekly" ? "2026-08-31" : "2026-09-04");
+  });
+  it("정상 빈 목록과 잘못된 목록을 구분한다", () => {
+    expect(parseKobisResponse(upstream("daily", []), "daily", "2026-09-06").items).toEqual([]);
+    for (const invalid of [null, [{ ...kobisMovie, salesAmt: "" }], [{ ...kobisMovie, audiCnt: "1.5" }], [kobisMovie, kobisMovie]]) {
+      expect(() => parseKobisResponse(upstream("daily", invalid), "daily", "2026-09-06")).toThrow(KobisError);
+    }
+    expect(() => parseKobisResponse({ faultInfo: { errorCode: "TEST" } }, "daily", "2026-09-06")).toThrow(KobisError);
+    expect(() => parseKobisResponse({ boxOfficeResult: { ...upstream("daily").boxOfficeResult, showRange: "20260905~20260905" } }, "daily", "2026-09-06")).toThrow(KobisError);
+  });
+  it("live는 KOBIS 결과를 반환하고 demo 전용 파라미터를 거절한다", async () => {
+    vi.stubEnv("DATA_MODE", "live");
+    vi.stubEnv("KOBIS_API_KEY", "unit-test-placeholder");
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => upstream("daily") });
+    vi.stubGlobal("fetch", fetchMock);
+    const response = await GET(new Request("http://localhost/api/box-office?date=2026-09-06&type=daily"));
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({ data: { status: "data", items: [{ salesAmt: "9007199254740993" }] }, meta: { source: "kobis", cachePersisted: false } });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const invalid = await GET(new Request("http://localhost/api/box-office?date=2026-09-06&demoScenario=error"));
+    expect(invalid.status).toBe(400);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+  it("외부 실패·시간 초과·형식 오류를 안전한 코드로 분리한다", async () => {
+    vi.stubEnv("DATA_MODE", "live");
+    vi.stubEnv("KOBIS_API_KEY", "unit-test-placeholder");
+    const request = new Request("http://localhost/api/box-office?date=2026-09-06");
+    for (const [upstreamResponse, status, code] of [
+      [{ ok: false }, 502, "KOBIS_UPSTREAM"],
+      [new DOMException("test", "TimeoutError"), 504, "KOBIS_TIMEOUT"],
+      [{ ok: true, json: async () => ({ faultInfo: {} }) }, 502, "KOBIS_INVALID_RESPONSE"],
+    ] as const) {
+      vi.stubGlobal("fetch", vi.fn(() => upstreamResponse instanceof Error ? Promise.reject(upstreamResponse) : Promise.resolve(upstreamResponse)));
+      const response = await GET(request);
+      expect(response.status).toBe(status);
+      expect(await response.json()).toMatchObject({ error: { code } });
+    }
   });
 });

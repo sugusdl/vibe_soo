@@ -1,6 +1,6 @@
 # 박스오피스 인사이트 개발 시작
 
-Next.js App Router + TypeScript 실행 뼈대입니다. 목록(`/`)·인사이트(`/insights`) 준비 화면과 생존 확인 API(`/api/health`)를 제공합니다. KOBIS 조회·DB 저장·실제 지표 계산은 후속 Phase에서 구현합니다. 준비 화면은 API의 정상 빈 응답을 의미하지 않습니다.
+Next.js App Router + TypeScript 박스오피스 대시보드입니다. 목록(`/`)은 `DATA_MODE=demo`에서 가상 데이터, `DATA_MODE=live`에서 KOBIS 일간·주간·주말 데이터를 조회합니다. 인사이트(`/insights`)는 준비 화면이며 DB 저장·캐시·지표 계산은 후속 단계입니다. 준비 화면은 API의 정상 빈 응답을 의미하지 않습니다.
 
 ## 실행 환경과 로컬 실행
 
@@ -19,13 +19,13 @@ npm run dev
 
 ## 환경변수
 
-현재 준비 화면과 테스트는 실제 키 없이 실행됩니다. 외부 연동 구현 시 `.env.example`의 변수 이름을 참고해 `.env.local`에만 실제 값을 설정합니다.
+데모와 자동 테스트는 실제 키 없이 실행됩니다. live에서는 `.env.example`의 변수 이름을 참고해 `.env.local`에만 실제 값을 설정합니다.
 
 - `KOBIS_API_KEY`
 - `SUPABASE_URL`
 - `SUPABASE_SECRET_KEY`
 
-실제 값을 소스·Git·브라우저·로그에 포함하지 않습니다. `.env.local`은 Git에서 제외하며 `.env.example`은 빈 값만 포함합니다. 이 뼈대에는 외부 서비스 연결을 수행하는 코드가 없습니다.
+실제 값을 소스·Git·브라우저·로그에 포함하지 않습니다. `.env.local`은 Git에서 제외하며 `.env.example`은 빈 값만 포함합니다. KOBIS 호출은 서버에서만 수행합니다. 요청·응답·검증 계약은 [API 가이드](docs/API_GUIDE.md), 데모 확인 입력은 [DEMO.md](DEMO.md)를 참고하세요.
 
 ## 검증 명령
 

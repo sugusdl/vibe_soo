@@ -24,8 +24,8 @@ export interface BoxOfficeResult {
     type: PeriodType;
     rangeStart: string;
     rangeEnd: string;
-    source: "fixture";
-    fetchedAt: null;
+    source: "fixture" | "kobis";
+    fetchedAt: string | null;
     expiresAt: null;
     cachePersisted: false;
     generatedAt: string;
@@ -48,6 +48,12 @@ export function getKoreaToday(now = new Date()): string {
   return new Intl.DateTimeFormat("en-CA", {
     timeZone: "Asia/Seoul", year: "numeric", month: "2-digit", day: "2-digit",
   }).format(now);
+}
+
+export function getPreviousDate(date: string): string {
+  const value = new Date(`${date}T00:00:00.000Z`);
+  value.setUTCDate(value.getUTCDate() - 1);
+  return value.toISOString().slice(0, 10);
 }
 
 export function filterMovies(items: BoxOfficeItem[], keyword: string): BoxOfficeItem[] {

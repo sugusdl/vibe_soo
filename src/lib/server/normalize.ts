@@ -20,7 +20,7 @@ export function normalizeMovies(value: unknown): BoxOfficeItem[] {
     }
     seen.add(item.movieCd);
     const rank = parseInteger(item.rank);
-    if (rank < 1n || rank > BigInt(Number.MAX_SAFE_INTEGER)) throw new Error("INVALID_RANK");
+    if (rank < 1n || rank > 2_147_483_647n) throw new Error("INVALID_RANK");
     const openDt = item.openDt === "" || item.openDt == null ? null : item.openDt;
     if (openDt !== null && (typeof openDt !== "string" || !isCalendarDate(openDt))) {
       throw new Error("INVALID_OPEN_DATE");
