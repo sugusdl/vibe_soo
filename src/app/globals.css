@@ -63,6 +63,18 @@ button[aria-pressed="true"] { background: var(--accent); border-color: var(--acc
 .result-meta strong { color: var(--text); }
 .result-meta span { color: var(--muted); }
 .cache-warning { padding: 12px 16px; margin-bottom: 14px; border: 1px solid #e4c78a; border-radius: 8px; background: #fffaf0; color: #6b4d16; font-size: 13px; }
+.insight-progress { margin: 20px 0; padding: 16px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); }
+.insight-progress progress { width: min(320px, 70vw); height: 12px; accent-color: #2458a6; }
+.insight-grid, .insight-metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 360px), 1fr)); gap: 18px; margin: 18px 0; }
+.chart-scroll { overflow-x: auto; max-width: 100%; }
+.top-bars { padding-left: 24px; }
+.top-bars li { margin: 16px 0; }
+.top-bars li > div:first-child { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.bar-track { height: 12px; margin-top: 6px; border-radius: 8px; background: #e6ebf2; }
+.bar-track span { display: block; height: 100%; border-radius: 8px; background: #2458a6; }
+.insight-metrics .feature-card > strong { font-size: 1.8rem; }
+.day-status { list-style: none; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 8px; }
+.day-status li { display: flex; align-items: center; gap: 10px; padding: 8px; border: 1px solid var(--border); border-radius: 6px; }
 .table-scroll { overflow-x: auto; max-width: 100%; border: 1px solid var(--border); border-radius: 10px; background: white; }
 table { width: 100%; border-collapse: collapse; font-size: 14px; white-space: nowrap; }
 thead { background: #edf1f7; }

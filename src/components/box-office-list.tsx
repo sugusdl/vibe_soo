@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { filterMovies, formatInteger, getPreviousDate, isCalendarDate, periodLabels, type BoxOfficeResult, type DataMode, type DemoScenario, type PeriodType } from "@/lib/box-office";
 
 type LoadState = { key: string; result: BoxOfficeResult } | { key: string; error: string };
@@ -112,6 +113,7 @@ export function BoxOfficeList({ mode, today }: { mode: DataMode | "invalid"; tod
           )}
       </div>
       {mode === "demo" && <p className="data-note">데모 주간: 09-07~09-13 · 데모 주말: 09-11~09-13. 샘플 기간 내 기준일에는 해당 고정 기간의 합계를 표시합니다.</p>}
+      <p><Link href={`/insights?date=${date}`} className="text-link">이 날짜로 인사이트 보기</Link></p>
     </>
   );
 }
