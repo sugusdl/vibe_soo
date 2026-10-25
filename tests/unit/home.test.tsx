@@ -4,6 +4,7 @@ import Home from "@/app/page";
 import InsightsPage from "@/app/insights/page";
 import { BoxOfficeList } from "@/components/box-office-list";
 import type { BoxOfficeResult } from "@/lib/box-office";
+import { getKoreaToday, getPreviousDate } from "@/lib/box-office";
 
 afterEach(() => { vi.unstubAllGlobals(); vi.unstubAllEnvs(); });
 
@@ -20,6 +21,16 @@ const response: BoxOfficeResult = {
 };
 
 describe("F1 데모 화면", () => {
+  it("live 최초 조건은 한국 시간 전날의 일간 조회다", () => {
+    const fetchMock = vi.fn((input: string) => { void input; return new Promise(() => {}); });
+    vi.stubGlobal("fetch", fetchMock);
+    vi.stubEnv("DATA_MODE", "live");
+    render(<Home />);
+    const yesterday = getPreviousDate(getKoreaToday());
+    expect(screen.getByLabelText("조회 날짜")).toHaveValue(yesterday);
+    expect(screen.getByRole("button", { name: "일간" })).toHaveAttribute("aria-pressed", "true");
+    expect(String(fetchMock.mock.calls[0]?.[0])).toContain(`date=${yesterday}`);
+  });
   it("최초 요청 중에는 로딩을 표시한다", () => {
     vi.stubGlobal("fetch", vi.fn(() => new Promise(() => {})));
     vi.stubEnv("DATA_MODE", "demo");

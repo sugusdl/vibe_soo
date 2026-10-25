@@ -17,6 +17,7 @@ describe("인사이트 집계", () => {
       day("2026-09-08", [["A", "같은 제목", "110000000", "11000"], ["B", "같은 제목", "120000000", "12000"], ["C", "세 번째", "65000000", "6500"], ["D", "네 번째", "45000000", "4500"], ["E", "다섯 번째", "22000000", "2200"]]),
     ], 5);
     expect(result.trend.map((point) => point.sales)).toEqual([300000000n, 362000000n]);
+    expect(result.trend.map((point) => point.audience)).toEqual([30000n, 36200n]);
     expect(result.totalSales).toBe(662000000n);
     expect(result.totalAudience).toBe(66200n);
     expect(result.top.map((movie) => [movie.movieCd, movie.sales])).toEqual([["A", 210000000n], ["B", 200000000n], ["C", 125000000n], ["D", 85000000n], ["E", 42000000n]]);
@@ -41,5 +42,20 @@ describe("인사이트 집계", () => {
     expect(datesEndingAt("2026-09-13", 14)).toHaveLength(14);
     expect(datesEndingAt("2026-09-13", 14)[0]).toBe("2026-08-31");
     expect(datesEndingAt("2026-09-13", 30)[0]).toBe("2026-08-15");
+  });
+
+  it("Top 동률은 관객수와 영화 코드 순으로 정렬하고 10개 요청에 실제 영화만 반환한다", () => {
+    const result = aggregateInsights([day("2026-09-07", [
+      ["C", "같은 제목", "100", "10"], ["B", "같은 제목", "100", "20"], ["A", "같은 제목", "100", "20"],
+    ])], 10);
+    expect(result.top.map((movie) => movie.movieCd)).toEqual(["A", "B", "C"]);
+  });
+
+  it("전부 빈 날짜면 가상의 합계·Top을 만들지 않는다", () => {
+    const result = aggregateInsights([{ date: "2026-09-06", state: "empty" }], 5);
+    expect(result.hasData).toBe(false);
+    expect(result.totalSales).toBeNull();
+    expect(result.totalAudience).toBeNull();
+    expect(result.top).toEqual([]);
   });
 });
