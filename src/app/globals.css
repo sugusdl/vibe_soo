@@ -62,6 +62,7 @@ button[aria-pressed="true"] { background: var(--accent); border-color: var(--acc
 .result-meta { display: flex; flex-wrap: wrap; gap: 8px 22px; padding: 12px 16px; margin-bottom: 14px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--muted); font-size: 13px; }
 .result-meta strong { color: var(--text); }
 .result-meta span { color: var(--muted); }
+.cache-warning { padding: 12px 16px; margin-bottom: 14px; border: 1px solid #e4c78a; border-radius: 8px; background: #fffaf0; color: #6b4d16; font-size: 13px; }
 .table-scroll { overflow-x: auto; max-width: 100%; border: 1px solid var(--border); border-radius: 10px; background: white; }
 table { width: 100%; border-collapse: collapse; font-size: 14px; white-space: nowrap; }
 thead { background: #edf1f7; }

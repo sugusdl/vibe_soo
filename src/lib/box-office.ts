@@ -24,11 +24,12 @@ export interface BoxOfficeResult {
     type: PeriodType;
     rangeStart: string;
     rangeEnd: string;
-    source: "fixture" | "kobis";
+    source: "fixture" | "kobis" | "cache";
     fetchedAt: string | null;
-    expiresAt: null;
-    cachePersisted: false;
+    expiresAt: string | null;
+    cachePersisted: boolean;
     generatedAt: string;
+    warning?: "CACHE_WRITE_FAILED";
   };
 }
 

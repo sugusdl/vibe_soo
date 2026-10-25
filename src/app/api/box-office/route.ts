@@ -1,7 +1,9 @@
 import { getKoreaToday, isCalendarDate, resolveDataMode, type BoxOfficeResult, type PeriodType } from "@/lib/box-office";
 import { getRawDemoFixture } from "@/lib/server/demo-fixtures";
-import { fetchKobisBoxOffice, KobisError } from "@/lib/server/kobis";
+import { getLiveBoxOffice } from "@/lib/server/box-office";
+import { KobisError } from "@/lib/server/kobis";
 import { normalizeMovies } from "@/lib/server/normalize";
+import { DbError } from "@/lib/server/supabase";
 
 export const runtime = "nodejs";
 
@@ -26,19 +28,13 @@ export async function GET(request: Request) {
 
   if (mode === "live") {
     try {
-      const boxOffice = await fetchKobisBoxOffice(type as PeriodType, date);
-      const now = new Date().toISOString();
-      const result: BoxOfficeResult = {
-        data: { status: boxOffice.items.length ? "data" : "empty", items: boxOffice.items },
-        meta: {
-          date, type: type as PeriodType,
-          rangeStart: boxOffice.rangeStart, rangeEnd: boxOffice.rangeEnd,
-          source: "kobis", fetchedAt: now, expiresAt: null,
-          cachePersisted: false, generatedAt: now,
-        },
-      };
-      return Response.json(result, { headers });
+      return Response.json(await getLiveBoxOffice(type as PeriodType, date), { headers });
     } catch (cause) {
+      if (cause instanceof DbError) {
+        if (cause.code === "DB_CONFIG") return error(cause.code, "서버의 데이터베이스 설정을 확인해 주세요.", 503);
+        if (cause.code === "DB_INVALID_RESPONSE") return error(cause.code, "저장 데이터를 확인하지 못했습니다. 다시 시도해 주세요.", 503);
+        return error(cause.code, "저장소를 읽지 못했습니다. 잠시 후 다시 시도해 주세요.", 503);
+      }
       const code = cause instanceof KobisError ? cause.code : "KOBIS_UPSTREAM";
       if (code === "KOBIS_CONFIG") return error(code, "서버의 KOBIS API 설정을 확인해 주세요.", 503);
       if (code === "KOBIS_TIMEOUT") return error(code, "박스오피스 정보 요청 시간이 초과됐습니다. 다시 시도해 주세요.", 504);

@@ -72,7 +72,7 @@ ARCHITECTURE.md는 단일 `box_office_cache.payload` JSONB 스냅샷을 제안�
 - `range_start <= range_end`, `expires_at > fetched_at`을 검사한다. 일간은 시작일·종료일이 기준일과 같아야 한다.
 - 주간·주말은 응답 실제 기간을 저장한다. 서로 다른 기준일이 같은 실제 기간을 가리킬 수 있으므로 `range_start`, `range_end`에는 별도 UNIQUE를 걸지 않는다.
 - 성공한 조회만 저장한다. 행이 없으면 ‘저장된 정상 조회 없음’, `empty` 행이 있으면 ‘정상 조회했으나 결과 없음’이다. 외부 오류는 `empty`로 기록하지 않는다.
-- 최초 데이터 TTL 1시간, 정상 빈 응답 TTL 10분이라는 기존 초기안을 따른다.
+- B단계의 데이터 TTL은 24시간, 정상 빈 응답 TTL은 1시간이다. 조회만으로 만료 시각을 연장하지 않는다.
 
 ### 3.3 box_office_results — 기간별 영화 실적
 

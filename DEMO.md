@@ -5,7 +5,7 @@
 `.env.local`에 `DATA_MODE=demo`를 설정하고 `npm run dev`로 실행한 뒤 http://localhost:3000 에 접속합니다. 키는 필요하지 않습니다. 환경변수를 바꾸면 서버를 재시작합니다.
 
 - `demo`: 서버 fixture만 읽으며 KOBIS·DB를 호출하지 않습니다. 미설정 시 기본값도 demo입니다.
-- `live`: `.env.local`의 `KOBIS_API_KEY`를 서버에서 읽어 실제 KOBIS 일간·주간·주말 데이터를 조회합니다. DB 저장·캐시는 아직 없습니다. 키가 없으면 HTTP 503입니다.
+- `live`: `.env.local`의 `KOBIS_API_KEY`, `SUPABASE_URL`, `SUPABASE_SECRET_KEY`를 서버에서 읽습니다. Supabase 저장본이 유효하면 재사용하고, 없거나 만료되면 KOBIS를 조회합니다. SQL 적용·설정 전에는 HTTP 503입니다.
 - 그 외 값: 설정 오류로 처리합니다. live나 다른 데이터 원본으로 자동 우회하지 않습니다.
 
 ## 상태별 확인 입력

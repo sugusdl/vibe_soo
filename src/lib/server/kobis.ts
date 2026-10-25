@@ -64,7 +64,7 @@ export function buildKobisUrl(type: PeriodType, targetDate: string, apiKey: stri
   return url;
 }
 
-export async function fetchKobisBoxOffice(type: PeriodType, targetDate: string): Promise<ValidatedBoxOffice> {
+export async function fetchKobisBoxOffice(type: PeriodType, targetDate: string): Promise<ValidatedBoxOffice & { original: unknown }> {
   const apiKey = process.env.KOBIS_API_KEY;
   if (!apiKey?.trim()) throw new KobisError("KOBIS_CONFIG");
 
@@ -77,7 +77,20 @@ export async function fetchKobisBoxOffice(type: PeriodType, targetDate: string):
     let payload: unknown;
     try { payload = await response.json(); }
     catch { throw new KobisError("KOBIS_INVALID_RESPONSE"); }
-    return parseKobisResponse(payload, type, targetDate);
+    const parsed = parseKobisResponse(payload, type, targetDate);
+    const source = (payload as { boxOfficeResult: Record<string, unknown> }).boxOfficeResult;
+    const listName = type === "daily" ? "dailyBoxOfficeList" : "weeklyBoxOfficeList";
+    const original = {
+      boxOfficeResult: {
+        boxofficeType: source.boxofficeType,
+        showRange: source.showRange,
+        [listName]: (source[listName] as Record<string, unknown>[]).map((row) => ({
+          movieCd: row.movieCd, movieNm: row.movieNm, rank: row.rank, openDt: row.openDt,
+          salesAmt: row.salesAmt, audiCnt: row.audiCnt, salesAcc: row.salesAcc, audiAcc: row.audiAcc,
+        })),
+      },
+    };
+    return { ...parsed, original };
   } catch (error) {
     if (error instanceof KobisError) throw error;
     if (error instanceof Error && (error.name === "TimeoutError" || error.name === "AbortError")) {

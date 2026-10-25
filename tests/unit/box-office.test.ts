@@ -1,6 +1,7 @@
 // @vitest-environment node
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("server-only", () => ({}));
+vi.mock("@/lib/server/original-snapshot", () => ({ saveOriginalSnapshot: vi.fn(async () => true) }));
 
 import { filterMovies, formatInteger, getKoreaToday, getPreviousDate, isCalendarDate, resolveDataMode } from "@/lib/box-office";
 import { getRawDemoFixture } from "@/lib/server/demo-fixtures";
@@ -161,29 +162,130 @@ describe("KOBIS live 어댑터 (PRD AC 2·3·4·11·12)", () => {
   it("live는 KOBIS 결과를 반환하고 demo 전용 파라미터를 거절한다", async () => {
     vi.stubEnv("DATA_MODE", "live");
     vi.stubEnv("KOBIS_API_KEY", "unit-test-placeholder");
-    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => upstream("daily") });
+    vi.stubEnv("SUPABASE_URL", "https://example.supabase.co");
+    vi.stubEnv("SUPABASE_SECRET_KEY", "unit-test-placeholder");
+    let stored: Record<string, unknown> | null = null;
+    let savedTtlMs = 0;
+    const fetchMock = vi.fn(async (input: URL, init?: RequestInit) => {
+      const path = input.pathname;
+      if (path.endsWith("/read_box_office_period")) return { ok: true, json: async () => stored };
+      if (path.endsWith("/save_box_office_period")) {
+        const params = JSON.parse(String(init?.body));
+        savedTtlMs = Date.parse(params.p_expires_at) - Date.parse(params.p_fetched_at);
+        stored = {
+          date: params.p_target_date, type: params.p_period_type,
+          rangeStart: params.p_range_start, rangeEnd: params.p_range_end,
+          status: params.p_status, fetchedAt: params.p_fetched_at, expiresAt: params.p_expires_at,
+          items: params.p_items.map((item: Record<string, unknown>) => ({ ...item, rank: Number(item.rank) })),
+        };
+        return { ok: true, json: async () => ({ saved: true }) };
+      }
+      return { ok: true, json: async () => upstream("daily") };
+    });
     vi.stubGlobal("fetch", fetchMock);
     const response = await GET(new Request("http://localhost/api/box-office?date=2026-09-06&type=daily"));
     expect(response.status).toBe(200);
-    expect(await response.json()).toMatchObject({ data: { status: "data", items: [{ salesAmt: "9007199254740993" }] }, meta: { source: "kobis", cachePersisted: false } });
-    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(await response.json()).toMatchObject({ data: { status: "data", items: [{ salesAmt: "9007199254740993" }] }, meta: { source: "kobis", cachePersisted: true } });
+    expect(savedTtlMs).toBe(24 * 60 * 60 * 1000);
+    expect(fetchMock.mock.calls.filter(([url]) => url.pathname.includes("kobisopenapi"))).toHaveLength(1);
+    const cached = await GET(new Request("http://localhost/api/box-office?date=2026-09-06&type=daily"));
+    expect(cached.status).toBe(200);
+    expect(await cached.json()).toMatchObject({ meta: { source: "cache", cachePersisted: true } });
+    expect(fetchMock.mock.calls.filter(([url]) => url.pathname.includes("kobisopenapi"))).toHaveLength(1);
     const invalid = await GET(new Request("http://localhost/api/box-office?date=2026-09-06&demoScenario=error"));
     expect(invalid.status).toBe(400);
-    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
   it("외부 실패·시간 초과·형식 오류를 안전한 코드로 분리한다", async () => {
     vi.stubEnv("DATA_MODE", "live");
     vi.stubEnv("KOBIS_API_KEY", "unit-test-placeholder");
+    vi.stubEnv("SUPABASE_URL", "https://example.supabase.co");
+    vi.stubEnv("SUPABASE_SECRET_KEY", "unit-test-placeholder");
     const request = new Request("http://localhost/api/box-office?date=2026-09-06");
     for (const [upstreamResponse, status, code] of [
       [{ ok: false }, 502, "KOBIS_UPSTREAM"],
       [new DOMException("test", "TimeoutError"), 504, "KOBIS_TIMEOUT"],
       [{ ok: true, json: async () => ({ faultInfo: {} }) }, 502, "KOBIS_INVALID_RESPONSE"],
     ] as const) {
-      vi.stubGlobal("fetch", vi.fn(() => upstreamResponse instanceof Error ? Promise.reject(upstreamResponse) : Promise.resolve(upstreamResponse)));
+      vi.stubGlobal("fetch", vi.fn((url: URL) => url.pathname.endsWith("/read_box_office_period")
+        ? Promise.resolve({ ok: true, json: async () => null })
+        : upstreamResponse instanceof Error ? Promise.reject(upstreamResponse) : Promise.resolve(upstreamResponse)));
       const response = await GET(request);
       expect(response.status).toBe(status);
       expect(await response.json()).toMatchObject({ error: { code } });
     }
+  });
+  it("저장소 읽기 실패는 KOBIS 호출 없이 503으로 반환한다", async () => {
+    vi.stubEnv("DATA_MODE", "live");
+    vi.stubEnv("SUPABASE_URL", "https://example.supabase.co");
+    vi.stubEnv("SUPABASE_SECRET_KEY", "unit-test-placeholder");
+    const fetchMock = vi.fn(async () => ({ ok: false }));
+    vi.stubGlobal("fetch", fetchMock);
+    const response = await GET(new Request("http://localhost/api/box-office?date=2026-09-06"));
+    expect(response.status).toBe(503);
+    expect(await response.json()).toMatchObject({ error: { code: "DB_READ" } });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+  it("저장 실패는 검증된 KOBIS 결과와 경고만 반환한다", async () => {
+    vi.stubEnv("DATA_MODE", "live");
+    vi.stubEnv("KOBIS_API_KEY", "unit-test-placeholder");
+    vi.stubEnv("SUPABASE_URL", "https://example.supabase.co");
+    vi.stubEnv("SUPABASE_SECRET_KEY", "unit-test-placeholder");
+    vi.stubGlobal("fetch", vi.fn(async (url: URL) => {
+      if (url.pathname.endsWith("/read_box_office_period")) return { ok: true, json: async () => null };
+      if (url.pathname.endsWith("/save_box_office_period")) return { ok: false };
+      return { ok: true, json: async () => upstream("daily") };
+    }));
+    const response = await GET(new Request("http://localhost/api/box-office?date=2026-09-06"));
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({ meta: {
+      source: "kobis", cachePersisted: false, expiresAt: null, warning: "CACHE_WRITE_FAILED",
+    } });
+  });
+  it("정상 빈 응답은 1시간 TTL로 저장하고 다음 요청은 캐시에서 읽는다", async () => {
+    vi.stubEnv("DATA_MODE", "live");
+    vi.stubEnv("KOBIS_API_KEY", "unit-test-placeholder");
+    vi.stubEnv("SUPABASE_URL", "https://example.supabase.co");
+    vi.stubEnv("SUPABASE_SECRET_KEY", "unit-test-placeholder");
+    let stored: Record<string, unknown> | null = null;
+    let savedTtlMs = 0;
+    const fetchMock = vi.fn(async (url: URL, init?: RequestInit) => {
+      if (url.pathname.endsWith("/read_box_office_period")) return { ok: true, json: async () => stored };
+      if (url.pathname.endsWith("/save_box_office_period")) {
+        const params = JSON.parse(String(init?.body));
+        savedTtlMs = Date.parse(params.p_expires_at) - Date.parse(params.p_fetched_at);
+        stored = {
+          date: params.p_target_date, type: params.p_period_type,
+          rangeStart: params.p_range_start, rangeEnd: params.p_range_end,
+          status: params.p_status, fetchedAt: params.p_fetched_at, expiresAt: params.p_expires_at,
+          items: [],
+        };
+        return { ok: true, json: async () => ({ saved: true }) };
+      }
+      return { ok: true, json: async () => upstream("daily", []) };
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const request = new Request("http://localhost/api/box-office?date=2026-09-06");
+    const first = await GET(request);
+    expect((await first.json()).data).toMatchObject({ status: "empty", items: [] });
+    expect(savedTtlMs).toBe(60 * 60 * 1000);
+    const second = await GET(request);
+    expect(await second.json()).toMatchObject({ data: { status: "empty" }, meta: { source: "cache" } });
+    expect(fetchMock.mock.calls.filter(([url]) => url.pathname.includes("kobisopenapi"))).toHaveLength(1);
+  });
+  it("만료된 저장본 뒤 KOBIS가 실패하면 오래된 데이터를 성공으로 반환하지 않는다", async () => {
+    vi.stubEnv("DATA_MODE", "live");
+    vi.stubEnv("KOBIS_API_KEY", "unit-test-placeholder");
+    vi.stubEnv("SUPABASE_URL", "https://example.supabase.co");
+    vi.stubEnv("SUPABASE_SECRET_KEY", "unit-test-placeholder");
+    vi.stubGlobal("fetch", vi.fn(async (url: URL) => url.pathname.endsWith("/read_box_office_period")
+      ? { ok: true, json: async () => ({
+        date: "2026-09-06", type: "daily", status: "data", rangeStart: "2026-09-06", rangeEnd: "2026-09-06",
+        fetchedAt: "2026-09-06T00:00:00.000Z", expiresAt: "2026-09-07T00:00:00.000Z",
+        items: [{ ...kobisMovie, rank: 1 }],
+      }) }
+      : { ok: false }));
+    const response = await GET(new Request("http://localhost/api/box-office?date=2026-09-06"));
+    expect(response.status).toBe(502);
+    expect(await response.json()).toMatchObject({ error: { code: "KOBIS_UPSTREAM" } });
   });
 });

@@ -91,11 +91,13 @@ export function BoxOfficeList({ mode, today }: { mode: DataMode | "invalid"; tod
               </div>
               <div className="result-meta" aria-label="조회 결과 정보">
                 <p>조회 건수 <strong>{result?.data.items.length ?? 0}편</strong>{keyword.trim() && result?.data.status === "data" ? ` · 검색 결과 ${items.length}편` : ""}</p>
-                <p>출처 <strong>{result?.meta.source === "kobis" ? "KOBIS Open API" : "가상 데모 데이터"}</strong></p>
+                <p>출처 <strong>{result?.meta.source === "kobis" ? "KOBIS Open API" : result?.meta.source === "cache" ? "저장된 데이터" : "가상 데모 데이터"}</strong></p>
                 {result?.meta.fetchedAt ?
                   <p>수집 시각 <strong>{displayTime} (한국 시간)</strong></p> :
                   <p>수집 시각 <strong>해당 없음</strong><span> · 데모 생성 시각 {displayTime} (한국 시간)</span></p>}
               </div>
+              {result?.meta.warning === "CACHE_WRITE_FAILED" &&
+                <div className="cache-warning" role="status">실제 목록은 표시했지만 저장에 실패했습니다. 다음 조회에서 KOBIS를 다시 호출할 수 있습니다.</div>}
               {state === "empty" ? <div className="state-panel empty-panel" role="status"><h2>선택한 기간의 박스오피스 데이터가 없습니다.</h2><p>요청은 정상 처리됐으며, 이 기간에 제공되는 데이터가 없습니다. 오류가 아닙니다.</p><p>{mode === "demo" ? "다른 날짜나 기간을 선택해 주세요. 데모 데이터는 2026-09-07 ~ 2026-09-13에 제공됩니다." : "다른 날짜나 기간을 선택해 주세요."}</p></div> :
                 state === "search-empty" ? <div className="state-panel search-empty-panel" role="status"><h2>현재 조회 목록에 일치하는 영화가 없습니다.</h2><p>조회 목록 {result?.data.items.length}편 중 검색어와 일치하는 영화가 없습니다. 검색어를 바꾸거나 초기화해 주세요.</p><button type="button" onClick={() => setKeyword("")}>검색 초기화</button></div> : (
                   <div className="table-scroll" role="region" aria-label="박스오피스 결과 표" tabIndex={0}>

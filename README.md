@@ -1,6 +1,6 @@
 # 박스오피스 인사이트 개발 시작
 
-Next.js App Router + TypeScript 박스오피스 대시보드입니다. 목록(`/`)은 `DATA_MODE=demo`에서 가상 데이터, `DATA_MODE=live`에서 KOBIS 일간·주간·주말 데이터를 조회합니다. 인사이트(`/insights`)는 준비 화면이며 DB 저장·캐시·지표 계산은 후속 단계입니다. 준비 화면은 API의 정상 빈 응답을 의미하지 않습니다.
+Next.js App Router + TypeScript 박스오피스 대시보드입니다. 목록(`/`)은 `DATA_MODE=demo`에서 가상 데이터, `DATA_MODE=live`에서 Supabase 저장본을 먼저 읽고 필요할 때 KOBIS 일간·주간·주말 데이터를 조회합니다. DB SQL과 연동 코드는 준비됐으며 실제 Supabase 프로젝트 설정·통합 검증은 남았습니다. 인사이트(`/insights`)는 준비 화면입니다.
 
 ## 실행 환경과 로컬 실행
 
@@ -19,7 +19,7 @@ npm run dev
 
 ## 환경변수
 
-데모와 자동 테스트는 실제 키 없이 실행됩니다. live에서는 `.env.example`의 변수 이름을 참고해 `.env.local`에만 실제 값을 설정합니다.
+데모와 모의 자동 테스트는 실제 키 없이 실행됩니다. live에서는 `.env.example`의 변수 이름을 참고해 `.env.local`에만 실제 값을 설정하고 [API 가이드](docs/API_GUIDE.md)의 순서대로 SQL을 적용합니다.
 
 - `KOBIS_API_KEY`
 - `SUPABASE_URL`
